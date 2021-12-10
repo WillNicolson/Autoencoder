@@ -1,0 +1,22 @@
+import torch
+from torchvision import transforms
+import os
+from PIL import Image
+
+
+def monoify():
+    for i in range(len(os.listdir('C:/Users/William/Desktop/samples'))):
+        img = Image.open('C:/Users/William/Desktop/samples/rendering{}.jpg'.format(i)).convert('L')
+        img.save('C:/Users/William/Desktop/monos/mono{}.jpg'.format(i))
+
+
+def tensorify():
+    for i in range(len(os.listdir('C:/Users/William/Desktop/monos'))):
+        img = Image.open('C:/Users/William/Desktop/monos/mono{}.jpg'.format(i))
+        convert_tensor = transforms.ToTensor()
+        tensor = convert_tensor(img)
+        torch.save(tensor, 'C:/Users/William/Desktop/tensors/tensor{}.jpg'.format(i))
+
+
+monoify()
+
