@@ -1,22 +1,25 @@
-import torch
-from torchvision import transforms
 import os
-from PIL import Image
+import pandas as pd
+import torch
+from torch.utils.data import Dataset
+from torchvision.io import read_image
 
 
-def monoify():
-    for i in range(len(os.listdir('C:/Users/William/Desktop/samples'))):
-        img = Image.open('C:/Users/William/Desktop/samples/rendering{}.jpg'.format(i)).convert('L')
-        img.save('C:/Users/William/Desktop/monos/mono{}.jpg'.format(i))
+class PartDataset(Dataset):
+    def __init__(self, csv_file, root_dir, transform=None):
+        self.annotations = pd.read_csv(csv_file)
+        self.root_dir = root_dir
+        self.transform = transform
 
+    def __len__(self):
+        return len(self.annotations)
 
-def tensorify():
-    for i in range(len(os.listdir('C:/Users/William/Desktop/monos'))):
-        img = Image.open('C:/Users/William/Desktop/monos/mono{}.jpg'.format(i))
-        convert_tensor = transforms.ToTensor()
-        tensor = convert_tensor(img)
-        torch.save(tensor, 'C:/Users/William/Desktop/tensors/tensor{}.jpg'.format(i))
+    def __getitem__(self, index):
+        img_path = os.path.join(self.root_dir, self.annotations.iloc[index, 0])
+        image = read_image(img_path)
+        ylabel = torch.tensor(int(self.annotations.iloc[index, 1]))
 
+        if self.transform:
+            image = self.transform(image)
 
-monoify()
-
+        return image/255, ylabel
