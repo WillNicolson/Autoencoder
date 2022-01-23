@@ -1,0 +1,142 @@
+import matplotlib.pyplot as plt
+import csv
+
+
+def get_errors(holes, flag):
+    if flag == 1:
+        f = open('C:/Users/William/Desktop/{}h/{}hsaferesults.csv'.format(str(holes), str(holes)))
+    elif flag == 0:
+        f = open('C:/Users/William/Desktop/{}h/{}hresults.csv'.format(str(holes), str(holes)))
+    elif flag == 2:
+        f = open('C:/Users/William/Desktop/{}h/{}hstructuredresults.csv'.format(str(holes), str(holes)))
+    reader = csv.reader(f)
+
+    data = list(reader)
+    errortensors = []
+    errors = []
+    meantensors = []
+    means = []
+
+    # extract mean pixel value tensors
+    for i in range(0, len(data), 2):
+        meantensors.append(data[i][1])
+    # convert to floats
+    for i in range(len(meantensors)):
+        number = ''
+        for j in range(7, 13):
+            number += meantensors[i][j]
+        means.append(float(number))
+
+    # extract error tensors
+    for i in range(0, len(data), 2):
+        errortensors.append(data[i][0])
+    # convert to floats
+    for i in range(len(errortensors)):
+        number = ''
+
+        for j in range(7, 13):
+            number += errortensors[i][j]
+        errors.append(float(number))
+
+    # adjust error by mean pixel values
+    normerrors = []
+    for i in range(len(errors)):
+        normerrors.append(errors[i]/means[i])
+    return [errors, normerrors]
+
+
+def mean(lst):
+    m = sum(lst)/len(lst)
+    return m
+
+
+[e4, ne4] = get_errors(4, 0)
+[e3, ne3] = get_errors(3, 0)
+[e2, ne2] = get_errors(2, 0)
+[e1, ne1] = get_errors(1, 0)
+
+[se4, sne4] = get_errors(4, 1)
+[se3, sne3] = get_errors(3, 1)
+[se2, sne2] = get_errors(2, 1)
+[se1, sne1] = get_errors(1, 1)
+
+[ste4, stne4] = get_errors(4, 2)
+[ste3, stne3] = get_errors(3, 2)
+[ste2, stne2] = get_errors(2, 2)
+[ste1, stne1] = get_errors(1, 2)
+
+# print(mean(e4), mean(ne4))
+# print(mean(e3), mean(ne3))
+# print(mean(e2), mean(ne2))
+# print(mean(e1), mean(ne1))
+#
+# print(mean(se4), mean(sne4))
+# print(mean(se3), mean(sne3))
+# print(mean(se2), mean(sne2))
+# print(mean(se1), mean(sne1))
+#
+# print(mean(ste4), mean(stne4))
+# print(mean(ste3), mean(stne3))
+# print(mean(ste2), mean(stne2))
+# print(mean(ste1), mean(stne1))
+
+
+def good_bad_inds(data):
+    good = 0
+    bad = 0
+    bad_inds = []
+    hmm = 0
+    hmm_inds = []
+    for i in range(len(ste3)):
+        if data[3][i] < data[0][i] and data[3][i] < ste2[i] and data[3][i] < ste3[i]:
+            good += 1
+        elif data[3][i] > ste1[i] or data[3][i] > ste2[i] or data[3][i] > ste3[i]:
+            bad += 1
+            bad_inds.append(i)
+        elif data[3][i] == ste1[i] or data[3][i] == ste2[i] or data[3][i] == ste3[i]:
+            hmm += 1
+            hmm_inds.append(i)
+    print('good: {}'.format(good))
+    print('bad: {}'.format(bad))
+    print('hmm: {}'.format(hmm))
+    print(bad_inds)
+    print(hmm_inds)
+
+
+
+# x = range(len(sne4))
+# plt.figure(0)
+# plt.xlabel('Sample Number')
+# plt.ylabel('Error')
+# s =10
+# plt.scatter(x, sne4, c='g', label='4', s=s)
+# plt.scatter(x, sne3, c='y', label='3', s=s)
+# plt.scatter(x, sne2, c='r', label='2', s=s)
+# plt.scatter(x, sne1, c='k', label='1', s=s)
+# plt.legend(title='Holes')
+
+
+# plt.figure(1)
+# plt.scatter(x, stne4, c='g', label='4h')
+# plt.scatter(x, stne3, c='y', label='3h')
+# plt.scatter(x, stne2, c='r', label='2h')
+# plt.scatter(x, stne1, c='k', label='1h')
+
+# plt.figure(2)
+# plt.scatter(x, stne4, c='g', label='4h')
+# plt.scatter(x, stne1, c='k', label='1h')
+
+# plt.figure(3)
+# plt.scatter(x, ste4, c='g', label='4h')
+# plt.scatter(x, ste1, c='k', label='1h')
+
+# plt.figure(4)
+# plt.scatter(x, sne4, c='g', label='4h')
+# plt.scatter(x, sne1, c='k', label='1h')
+
+# plt.figure(5)
+# plt.scatter(x, se4, c='g', label='4h')
+# plt.scatter(x, se1, c='k', label='1h')
+
+
+# plt.show()
