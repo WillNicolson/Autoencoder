@@ -1,0 +1,102 @@
+import Area_underROC
+import VAE2
+import torch.nn as nn
+import torch
+from skopt import gp_minimize
+from skopt.space import Integer
+from skopt.space import Real
+from skopt.utils import use_named_args
+from customDataset import PartDataset
+import numpy as np
+import csv
+model_number = 100
+latent_size = int(10)
+num_epochs = 13
+model = VAE2.VAE
+search_space = [
+        Real(0, 10, name='beta'), Real(0.0005, 0.005, name='lr'), Integer(16, 64, name='batch_size'),
+        Real(0, 0.05, name='sensitivity'), Integer(4, 20, name='cool_down'), Integer(4, 20, name='look_back')
+    ]
+
+
+def train(train_loader, test_loader, beta, lr, sensitivity, cool_down, look_back):
+    best_epoch = 0
+    outputs = []
+    mean_accuracies = []
+    # Training loop
+    last_activation = 0
+    for epoch in range(num_epochs):
+        print("Epoch %d" % epoch)
+
+        model.train()
+        optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+        i = 0
+
+        losses = []
+        losses_test = []
+        accuracies = []
+        accuracies_test = []
+        kld_losses = []
+        bce_losses = []
+
+        for image, (label) in train_loader:
+            # ===================forward=====================
+            x_hat, mu, logvar = model(image)
+            loss, kld_loss, bce_loss, accuracy = VAE2.loss_function(x_hat, image, mu, logvar, beta)
+            losses.append(loss.item())
+            accuracies.append(accuracy.item())
+            kld_losses.append(kld_loss.item())
+            bce_losses.append(bce_loss.item())
+
+            # ===================backward====================
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+        print('kld loss (training): {}'.format(np.mean(kld_losses)))
+        print('bce loss (training): {}'.format(np.mean(bce_losses)))
+
+        model.eval()
+        # test time
+        for image, (label) in test_loader:
+            # ===================forward=====================
+            x_hat, mu, logvar = model(image)
+            loss, kld_loss, bce_loss, accuracy = VAE2.loss_function(x_hat, image, mu, logvar, beta)
+            losses_test.append(loss.item())
+
+            accuracies_test.append(accuracy.item())
+
+        mean_accuracies.append(np.mean(accuracies_test))
+        print('accuracy(testing): {}'.format(mean_accuracies[epoch].item()))
+        lr, last_activation, best_epoch, cb_flag = VAE2.call_backs(lr, mean_accuracies, best_epoch, epoch,
+                                                                   last_activation, sensitivity, cool_down, look_back)
+        if cb_flag == 1:
+            return mean_accuracies, epoch, best_epoch
+    return mean_accuracies, epoch, best_epoch
+
+
+@use_named_args(search_space)
+def calculate(beta, lr, batch_size, sensitivity, cool_down, look_back):
+    dataset = PartDataset(csv_file="C:/Users/William/Desktop/set 1/set1.csv",
+                          root_dir='C:/Users/William/Desktop/set 1/images')  # transform=transforms.ToTensor()
+    best_accuracies = []
+    for i in range(3):
+        trainset, testset = torch.utils.data.random_split(dataset, [1000, 300])
+        test_loader = torch.utils.data.DataLoader(dataset=testset, shuffle=True, batch_size=int(batch_size), num_workers=0)
+        train_loader = torch.utils.data.DataLoader(dataset=trainset, shuffle=True, batch_size=int(batch_size), num_workers=0,
+                                                   drop_last=False)
+
+        mean_accuracies, epoch, best_epoch = train(train_loader, test_loader, beta, lr, sensitivity, cool_down, look_back)
+        best_accuracies.append(mean_accuracies[best_epoch])
+    best_accuracy = np.mean(best_accuracies)
+    f = open('C:/Users/William/Desktop/testset2/optimisation', 'a')
+    writer = csv.writer(f)
+    writer.writerow([best_accuracy, best_epoch, epoch, beta, lr, batch_size, sensitivity, cool_down, look_back])
+    f.close()
+    return best_accuracy
+
+
+result = gp_minimize(calculate, search_space)
+
+print('Best Accuracy: %.3f' % result.fun)
+print('Best Parameters: beta=%d, lr=%d, batch_size=%d, sensitivity=%d, cool_down=%d, look_back=%d' % (result.x[0], result.x[1], result.x[1], result.x[1], result.x[1], result.x[1]))
